@@ -1,4 +1,4 @@
-name: llmcompass_ae
+name: llmcompass
 channels:
   - pytorch
   - anaconda
@@ -88,4 +88,4 @@ dependencies:
       - tqdm==4.67.1
       - tzdata==2025.2
       - zipp==3.21.0
-prefix: /opt/conda/envs/llmcompass_ae
+# prefix: /opt/conda/envs/llmcompass_ae
