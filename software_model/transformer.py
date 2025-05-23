@@ -165,10 +165,12 @@ class TransformerBlockInitComputationTP(Operator):
 
         # allreduce
         if self.device_count > 1:
-            allreduce_latency = self.allreduce_mha.simulate(interconnect)
-            allreduce_total_latency = allreduce_latency * 2
+            allreduce_latency_mha = self.allreduce_mha.simulate(interconnect)
+            allreduce_latency_ffn += self.allreduce_ffn.simulate(interconnect)
+            allreduce_total_latency = allreduce_latency_ffn + allreduce_latency_mha
         else:
-            allreduce_total_latency = 0
+            allreduce_latency_mha = 0
+            allreduce_latency_ffn = 0
             allreduce_total_latency = 0
 
         # others
@@ -176,9 +178,9 @@ class TransformerBlockInitComputationTP(Operator):
         # print
         print("Roofline breakdown:")
         print(
-            f"{qkv_latency}\n{q_mul_k_latency}\n{a_mul_v_latency}\n{h_matmul0_latency}\n{h1_matmul1_latency}\n{h2_matmul2_latency}\n{softmax_latency}\n{layernorm_latency}\n{layernorm_latency}\n{gelu_latency}\n{allreduce_latency}\n{allreduce_latency}\n"
+            f"{qkv_latency}\n{q_mul_k_latency}\n{a_mul_v_latency}\n{h_matmul0_latency}\n{h1_matmul1_latency}\n{h2_matmul2_latency}\n{softmax_latency}\n{layernorm_latency}\n{layernorm_latency}\n{gelu_latency}\n{allreduce_latency_mha}\n{allreduce_latency_ffn}\n"
         )
-        self.roofline_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency}, {allreduce_latency}"
+        self.roofline_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency_mha}, {allreduce_latency_ffn}"
         print("total:")
         print(
             f"{matmul_total_latency}\n{normlization_total_latency}\n{gelu_latency}\n{allreduce_total_latency}\n"
@@ -196,37 +198,37 @@ class TransformerBlockInitComputationTP(Operator):
         interconnect = system.interconnect
 
         # matmul
-        print("simulating qkv")
+        # print("simulating qkv")
         qkv_latency = 3 * (
             self.Q_proj.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("simulating q_mul_k")
+        # print("simulating q_mul_k")
         q_mul_k_latency = (
             self.Q_mul_K.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("simulating a_mul_v")
+        # print("simulating a_mul_v")
         a_mul_v_latency = (
             self.A_mul_V.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("simulating h_matmul0")
+        # print("simulating h_matmul0")
         h_matmul0_latency = (
             self.H_matmul0.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("simulating h1_matmul1")
+        # print("simulating h1_matmul1")
         h1_matmul1_latency = (
             self.H_matmul1.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("simulating h2_matmul2")
+        # print("simulating h2_matmul2")
         h2_matmul2_latency = (
             self.H_matmul2.compile_and_simulate(device, compile_mode)
             + device.compute_module.overhead.matmul
         )
-        print("finish matmul simulation")
+        # print("finish matmul simulation")
 
         matmul_total_latency = (
             qkv_latency
@@ -257,10 +259,13 @@ class TransformerBlockInitComputationTP(Operator):
 
         # allreduce
         if self.device_count > 1:
-            allreduce_latency = self.allreduce_mha.simulate(interconnect)
-            allreduce_total_latency = allreduce_latency * 2
+            allreduce_latency_mha = self.allreduce_mha.simulate(interconnect)
+            allreduce_latency_ffn = self.allreduce_ffn.simulate(interconnect)
+            allreduce_total_latency = allreduce_latency_mha + allreduce_latency_ffn
         else:
             allreduce_latency = 0
+            allreduce_latency_mha = 0
+            allreduce_latency_ffn = 0
             allreduce_total_latency = 0
 
         # others
@@ -280,7 +285,7 @@ class TransformerBlockInitComputationTP(Operator):
             + gelu_latency
             + allreduce_total_latency
         )
-        self.simluate_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency}, {allreduce_latency}"
+        self.simluate_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency_mha}, {allreduce_latency_ffn}"
         return self.latency
 
     def run_on_gpu(self):
@@ -521,10 +526,13 @@ class TransformerBlockAutoRegressionTP(Operator):
 
         # allreduce
         if self.device_count > 1:
-            allreduce_latency = self.allreduce_mha.simulate(interconnect)
-            allreduce_total_latency = allreduce_latency * 2
+            allreduce_latency_mha = self.allreduce_mha.simulate(interconnect)
+            allreduce_latency_ffn = self.allreduce_ffn.simulate(interconnect)
+            allreduce_total_latency = allreduce_latency_mha + allreduce_latency_ffn
         else:
             allreduce_latency = 0
+            allreduce_latency_mha = 0
+            allreduce_latency_ffn = 0
             allreduce_total_latency = 0
 
         # others
@@ -532,7 +540,7 @@ class TransformerBlockAutoRegressionTP(Operator):
         # print
         print("Roofline breakdown:")
         print(
-            f"{qkv_latency}\n{q_mul_k_latency}\n{a_mul_v_latency}\n{h_matmul0_latency}\n{h1_matmul1_latency}\n{h2_matmul2_latency}\n{softmax_latency}\n{layernorm_latency}\n{layernorm_latency}\n{gelu_latency}\n{allreduce_latency}\n{allreduce_latency}\n"
+            f"{qkv_latency}\n{q_mul_k_latency}\n{a_mul_v_latency}\n{h_matmul0_latency}\n{h1_matmul1_latency}\n{h2_matmul2_latency}\n{softmax_latency}\n{layernorm_latency}\n{layernorm_latency}\n{gelu_latency}\n{allreduce_latency_mha}\n{allreduce_latency_ffn}\n"
         )
         print("total:")
         print(
@@ -545,7 +553,7 @@ class TransformerBlockAutoRegressionTP(Operator):
             + allreduce_total_latency
         )
         # print(f'memory requirement: {self.memory_requirement/1e9*96}GB')
-        self.roofline_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency}, {allreduce_latency}"
+        self.roofline_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency_mha}, {allreduce_latency_ffn}"
         return self.roofline_latency
 
     def compile_and_simulate(self, system: System, compile_mode: str):
@@ -613,10 +621,13 @@ class TransformerBlockAutoRegressionTP(Operator):
 
         # allreduce
         if self.device_count > 1:
-            allreduce_latency = self.allreduce_mha.simulate(interconnect)
-            allreduce_total_latency = allreduce_latency * 2
+            allreduce_latency_mha = self.allreduce_mha.simulate(interconnect)
+            allreduce_latency_ffn = self.allreduce_ffn.simulate(interconnect)
+            allreduce_total_latency = allreduce_latency_mha + allreduce_latency_ffn
         else:
             allreduce_latency = 0
+            allreduce_latency_mha = 0
+            allreduce_latency_ffn = 0
             allreduce_total_latency = 0
 
         # others
@@ -636,7 +647,7 @@ class TransformerBlockAutoRegressionTP(Operator):
             + gelu_latency
             + allreduce_total_latency
         )
-        self.simluate_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency}, {allreduce_latency}"
+        self.simluate_log = f"{qkv_latency}, {q_mul_k_latency}, {a_mul_v_latency}, {h_matmul0_latency}, {h1_matmul1_latency}, {h2_matmul2_latency}, {softmax_latency}, {layernorm_latency}, {layernorm_latency}, {gelu_latency}, {allreduce_latency_mha}, {allreduce_latency_ffn}"
         return self.latency
 
     def run_on_gpu(self):
