@@ -3,3 +3,8 @@ SlurmOutput/
 temp/
 .vscode/
 *.ncu-rep
+**SLURM**
+**slurm**
+**ipynb_checkpoint**
+**results_**
+**simRuns.txt
