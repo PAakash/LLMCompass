@@ -1,5 +1,12 @@
 [![DOI](https://zenodo.org/badge/779008229.svg)](https://zenodo.org/doi/10.5281/zenodo.10892431)
 
+
+# Changelog
+
+AP: Added ae/simRuns for parameter sweep for memory and interconnect
+
+
+
 # LLMCompass
 
 This repository provides the implementation of **LLMCompass** from the following papers:
@@ -11,6 +18,15 @@ This repository provides the implementation of **LLMCompass** from the following
 
 ## Set up the environment
 
+
+Forget part below, trust me.
+Just create a conda environment with environment.yaml
+```bash
+conda create env -f environment.yml
+```
+
+
+Skip steps below.
 ```
 $ conda create -n llmcompass_ae python=3.9
 $ conda activate llmcompass_ae

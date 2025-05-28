@@ -6,7 +6,7 @@ import pandas as pd
 
 import shutil
 
-SHARE_DIR = "/imec/other/dtpatha/patel23/share"
+SHARE_DIR = "/imec/other/dtpatha/patel23/share/llmcompass"
 
 
 categories = [
@@ -34,10 +34,12 @@ colors = colors_matmul + colors_normalization + colors_gelu + colors_allreduce
 batch_size = 8
 
 simRuns = []
-with open("simRuns.txt", "r") as file:
+resultsDir = "./results_updated/sweep"
+with open(f"{resultsDir}/simRuns.txt", "r") as file:
     simRuns = file.readlines()
 
 
+print(len(simRuns))
 initList = []
 ar_list = []
 for cSim in simRuns:
@@ -45,14 +47,14 @@ for cSim in simRuns:
     # print(cSim)
     _tmpSplitStr = cSim.split("_")
     results_init = pd.read_csv(
-        f"results/{cSim}_init.csv",
+        f"{resultsDir}/{cSim}_init.csv",
         header=None,
         names=col_names,
         index_col=0,
     )
     results_init.index.astype(float)
     results_ar = pd.read_csv(
-        f"results/{cSim}_ar.csv",
+        f"{resultsDir}/{cSim}_ar.csv",
         header=None,
         names=col_names,
         index_col=0,
@@ -65,14 +67,11 @@ for cSim in simRuns:
 
     # x_labels = [i * 400 for i in [1, 2, 3, 4, 5, 6, 7, 8]]
     x_labels = results_init.index.tolist()
-    for row_index in x_labels:
+    # for row_index in x_labels:
+    for i in range(0, len(results_init)):
         x = x + 1
-        try:
-            values = results_init.loc[row_index].tolist()
-            # print(results_init.loc[row_index])
-        except:
-            values = results_init.iloc[x - 1].tolist()
-            # print(results_init.iloc[x - 1])
+        values = results_init.iloc[x - 1].tolist()
+        # print(results_init.iloc[x - 1])
 
         bottom = 0
         # for i, (category, value) in enumerate(zip(categories, values[2:])):
@@ -81,7 +80,7 @@ for cSim in simRuns:
             "Bug": str(x),
             "Memory": _tmpSplitStr[1],
             "Mem per chiplet": _tmpSplitStr[2],
-            "Mem BW": row_index,
+            "Mem BW": results_init.iloc[x - 1, 0],
             "Interconnect": _tmpSplitStr[4],
         }
         for _key, _value in zip(categories, values[2:]):
@@ -107,7 +106,6 @@ for cSim in simRuns:
             # print(results_init.iloc[x - 1])
         # values = results_ar.loc[row_index].tolist()
         bottom = 0
-        # for i, (category, value) in enumerate(zip(categories, values[2:])):
         cData = {
             "Sim": cSim,
             "Bug": str(x),
@@ -120,27 +118,23 @@ for cSim in simRuns:
             cData[_key] = _value
 
         ar_list.append(cData)
-        value = value * 1e3
+        # value = value * 1e3
 
-    # Set the title, legend, and display the graph
-    # plt.title(
-    #     "Generation Latency per Layer per Token"
-    # )
-with open(f"prefill.csv", "w", newline="") as csvfile:
+with open(f"{resultsDir}/prefill.csv", "w", newline="") as csvfile:
     fieldnames = initList[0].keys()
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(initList)
 
-destFile = f"{SHARE_DIR}/llmcompass/prefill.csv"
-shutil.copy(f"prefill.csv", destFile)
+destFile = f"{SHARE_DIR}/prefill.csv"
+shutil.copy(f"{resultsDir}/prefill.csv", destFile)
 
 
-with open(f"generation.csv", "w", newline="") as csvfile:
+with open(f"{resultsDir}/generation.csv", "w", newline="") as csvfile:
     fieldnames = ar_list[0].keys()
     writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
     writer.writeheader()
     writer.writerows(ar_list)
 
-destFile = f"{SHARE_DIR}/llmcompass/generation.csv"
-shutil.copy(f"generation.csv", destFile)
+destFile = f"{SHARE_DIR}/generation.csv"
+shutil.copy(f"{resultsDir}/generation.csv", destFile)
